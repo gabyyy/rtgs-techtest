@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using RTGS.TechTest.Api.Exceptions;
+using RTGS.TechTest.Api.Models;
+using RTGS.TechTest.Api.Services;
 
 namespace RTGS.TechTest.Api.Controllers;
 
@@ -16,31 +19,43 @@ public class AccountController : ControllerBase
 	[HttpPost("{accountIdentifier}", Name = "Deposit")]
 	public IActionResult Deposit(string accountIdentifier, [FromBody]float amount)
 	{
-		_accountProvider.Deposit(accountIdentifier, amount);
-		return Ok();
+		try
+		{
+            _accountProvider.Deposit(accountIdentifier, amount);
+            return Ok();
+        }
+		catch (ValidationException ex)
+		{
+			return UnprocessableEntity(ex.Message);
+		}
+		catch (AccountNotFoundException)
+		{
+			return NotFound();
+		}		
 	}
 
 	[HttpPost("transfer", Name = "Transfer")]
 	public IActionResult Transfer(MyTransferDto transfer)
 	{
-		_accountProvider.Transfer(transfer);
-		return Accepted();
+        try
+        {
+            _accountProvider.Transfer(transfer);
+            return Accepted();
+        }
+        catch (ValidationException ex)
+        {
+            return UnprocessableEntity(ex.Message);
+        }
+        catch (AccountNotFoundException)
+        {
+            return NotFound();
+        }
 	}
 
 	[HttpGet("{accountIdentifier}", Name = "GetBalance")]
-	public MyBalance Get(string accountIdentifier) => _accountProvider.GetBalance(accountIdentifier);
-}
-
-public class MyTransferDto
-{
-	public MyTransferDto(string debtorAccountIdentifier, string creditorAccountIdentifier, float amount)
+	public IActionResult Get(string accountIdentifier)
 	{
-		DebtorAccountIdentifier = debtorAccountIdentifier;
-		CreditorAccountIdentifier = creditorAccountIdentifier;
-		Amount = amount;
+		var account = _accountProvider.Get(accountIdentifier);
+		return account != null ? Ok(account) : NotFound();
 	}
-
-	public string DebtorAccountIdentifier { get; set; }
-	public string CreditorAccountIdentifier { get; set; }
-	public float Amount { get; set; }
 }
